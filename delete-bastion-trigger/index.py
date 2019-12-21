@@ -11,7 +11,7 @@ def lambda_handler(event, context):
     client.invoke(
         FunctionName=delete_bastion_function,
         InvocationType='Event',
-        Payload=bytes(json.dumps({"user": user})),
+        Payload=bytes(json.dumps({"user": user}), encoding='utf8'),
     )
 
     response = {}
