@@ -130,7 +130,9 @@ def lambda_handler(event, context):
             }
         ]
     )
-    while (len(eni_description['NetworkInterfaces']) == 0 or eni_description['NetworkInterfaces'][0]['Attachment']['Status'] != 'attached'):
+    while (len(eni_description['NetworkInterfaces']) == 0
+            or eni_description['NetworkInterfaces'][0]['Attachment'] == None
+            or eni_description['NetworkInterfaces'][0]['Attachment']['Status'] != 'attached'):
         time.sleep(2)
         eni_description = ec2.describe_network_interfaces(
             Filters=[
