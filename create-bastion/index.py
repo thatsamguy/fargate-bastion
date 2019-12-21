@@ -37,19 +37,17 @@ def lambda_handler(event, context):
 
     try:
         # Check if everything already exists, if so return that
-        ec2.describe_security_groups(
+        sg_check = ec2.describe_security_groups(
             Filters=[
                 {'Name': 'vpc-id', 'Values': [vpc]},
                 {'Name': 'group-name', 'Values': [bastion_name]}
             ]
         )
-        # TODO: check that the IPs still match, otherwise switch them out
         running_tasks = ecs.list_tasks(
             cluster=bastion_cluster,
             family=bastion_name,
             desiredStatus='RUNNING'
         )
-        # TODO: if securitygroup found, but no task delete the securitygroup before proceeding
         if len(running_tasks['taskArns']) > 0:
             tasklist = ecs.describe_tasks(cluster=bastion_cluster, tasks=running_tasks['taskArns'])
             task_arn = tasklist['tasks'][0]['taskArn']
@@ -73,23 +71,29 @@ def lambda_handler(event, context):
         else:
             failResponse(e.response)
 
-    # Create the security group
-    sg_response = ec2.create_security_group(
-        Description='Bastion access for ' + user,
-        GroupName=bastion_name,
-        VpcId=vpc
-    )
+    if len(sg_check['SecurityGroups']) != 0:
+        # TODO: if securitygroup found, but no task delete the securitygroup before creating the new one
+        if sg_check['SecurityGroups'][0]['IpPermissions'][0]['IpRanges'][0]['CidrIp'] != ip:
+            # Create the security group
+            sg_response = ec2.create_security_group(
+                Description='Bastion access for ' + user,
+                GroupName=bastion_name,
+                VpcId=vpc
+            )
 
-    sg = sg_response['GroupId']
+            sg = sg_response['GroupId']
 
-    # Add the ingress rule to it
-    ec2.authorize_security_group_ingress(
-        CidrIp=ip,
-        FromPort=22,
-        GroupId=sg,
-        IpProtocol='tcp',
-        ToPort=22
-    )
+            # Add the ingress rule to it
+            ec2.authorize_security_group_ingress(
+                CidrIp=ip,
+                FromPort=22,
+                GroupId=sg,
+                IpProtocol='tcp',
+                ToPort=22
+            )
+        else:
+            # Existing security group matches, so use it
+            sg = sg_check['SecurityGroups'][0]['GroupId']
 
     # Start the bastion container
     response = ecs.run_task(
