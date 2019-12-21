@@ -10,6 +10,7 @@ import re
 
 bastion_cluster = os.environ['BASTION_CLUSTER']
 vpc = os.environ['BASTION_VPC']
+task_definition_name = os.environ['BASTION_TASK_DEFINITION_NAME']
 
 def successResponse():
     response = {}
@@ -34,7 +35,7 @@ def lambda_handler(event, context):
         # Find the Fargate task
         running_tasks = ecs.list_tasks(
             cluster=bastion_cluster,
-            family=bastion_name,
+            family=task_definition_name,
             desiredStatus='RUNNING'
         )
         for task_arn in running_tasks['taskArns']:

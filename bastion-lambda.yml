@@ -107,6 +107,7 @@ Resources:
         Variables:
           BASTION_CLUSTER: !Ref BastionCluster
           BASTION_VPC: !Ref BastionVpc
+          BASTION_TASK_DEFINITION_NAME: !Ref BastionTaskDefinitionName
       Policies:
         - Version: '2012-10-17'
           Statement:
