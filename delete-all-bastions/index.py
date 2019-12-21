@@ -37,9 +37,8 @@ def lambda_handler(event, context):
         )
         related_securitygroups = []
         enis = []
-        print(running_tasks)
         for task_arn in running_tasks['taskArns']:
-            print("Found a task")
+            print(task_arn)
             # Retrieve the ENI information
             tasklist = ecs.describe_tasks(
                 cluster=bastion_cluster, tasks=[task_arn])
@@ -49,11 +48,17 @@ def lambda_handler(event, context):
             attachment_description = re.sub(
                 r'task/.*', attachment_identifier, task_arn)
             enis.append(attachment_description)
-
-            group = tasklist['tasks'][0]['group']
-            family = group[7:]
-            related_securitygroups.append(family)
-            print(related_securitygroups)
+            eni_description = ec2.describe_network_interfaces(
+                Filters=[
+                    {
+                        'Name': 'description',
+                        'Values': [attachment_description]
+                    }
+                ]
+            )
+            for eni in eni_description['NetworkInterfaces']:
+                for eni_sg in eni['Groups']:
+                    related_securitygroups.append(eni_sg['GroupId'])
 
             # Stop the task
             ecs.stop_task(
@@ -82,15 +87,12 @@ def lambda_handler(event, context):
                 ]
             )
         print("All tasks are deleted")
-        # Now find the security group to delete
-        security_group = ec2.describe_security_groups(
-            Filters=[
-                {'Name': 'vpc-id', 'Values': [vpc]},
-                {'Name': 'group-name', 'Values': related_securitygroups}
-            ]
-        )
-        for group in security_group['SecurityGroups']:
-            ec2.delete_security_group(GroupId=group['GroupId'])
+
+        print("Deleting related security groups")
+
+        for group_id in related_securitygroups:
+            print(group_id)
+            ec2.delete_security_group(GroupId=group_id)
 
         print("Groups are deleted")
 
