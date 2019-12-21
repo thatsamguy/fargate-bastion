@@ -45,7 +45,7 @@ def lambda_handler(event, context):
         )
         running_tasks = ecs.list_tasks(
             cluster=bastion_cluster,
-            family=bastion_name,
+            family=task_definition_name,
             desiredStatus='RUNNING'
         )
         if len(running_tasks['taskArns']) > 0:
