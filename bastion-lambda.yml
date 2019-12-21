@@ -9,6 +9,9 @@ Parameters:
   BastionSubnets:
     Type: String
     Description: The list of public subnets you want the bastions to appear in
+  BastionTaskDefinitionName:
+    Type: String
+    Description: Name of an existing ECS Task Definition to be executed
   BastionVpc:
     Type: String
     Description: The vpc of the public subnets
@@ -29,6 +32,7 @@ Resources:
         Variables:
           BASTION_CLUSTER: !Ref BastionCluster
           BASTION_SUBNETS: !Ref BastionSubnets
+          BASTION_TASK_DEFINITION_NAME: !Ref BastionTaskDefinitionName
           BASTION_VPC: !Ref BastionVpc
       Events:
         CreateBastion:

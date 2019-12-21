@@ -13,6 +13,7 @@ bastion_cluster = os.environ['BASTION_CLUSTER']
 subnet_string = os.environ['BASTION_SUBNETS']
 subnet_array = subnet_string.split(',')
 vpc = os.environ['BASTION_VPC']
+task_definition_name = os.environ['BASTION_TASK_DEFINITION_NAME']
 
 def ipResponse(ip):
     response = {}
@@ -93,7 +94,7 @@ def lambda_handler(event, context):
     # Start the bastion container
     response = ecs.run_task(
         cluster=bastion_cluster,
-        taskDefinition=bastion_name,
+        taskDefinition=task_definition_name,
         count=1,
         startedBy='bastion-builder',
         launchType='FARGATE',
