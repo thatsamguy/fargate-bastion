@@ -39,7 +39,7 @@ def lambda_handler(event, context):
             desiredStatus='RUNNING'
         )
         for task_arn in running_tasks['taskArns']:
-            print("Found a task")
+            print(task_arn)
             # Retrieve the ENI information
             tasklist = ecs.describe_tasks(
                 cluster=bastion_cluster, tasks=[task_arn])
@@ -81,6 +81,7 @@ def lambda_handler(event, context):
             ]
         )
         for group in security_group['SecurityGroups']:
+            print(group['GroupId'])
             ec2.delete_security_group(GroupId=group['GroupId'])
 
         print("Groups are deleted")
