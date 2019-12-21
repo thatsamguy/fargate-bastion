@@ -71,29 +71,33 @@ def lambda_handler(event, context):
         else:
             failResponse(e.response)
 
+    sg = ''
     if len(sg_check['SecurityGroups']) != 0:
-        # TODO: if securitygroup found, but no task delete the securitygroup before creating the new one
-        if sg_check['SecurityGroups'][0]['IpPermissions'][0]['IpRanges'][0]['CidrIp'] != ip:
-            # Create the security group
-            sg_response = ec2.create_security_group(
-                Description='Bastion access for ' + user,
-                GroupName=bastion_name,
-                VpcId=vpc
-            )
-
-            sg = sg_response['GroupId']
-
-            # Add the ingress rule to it
-            ec2.authorize_security_group_ingress(
-                CidrIp=ip,
-                FromPort=22,
-                GroupId=sg,
-                IpProtocol='tcp',
-                ToPort=22
-            )
-        else:
+        if sg_check['SecurityGroups'][0]['IpPermissions'][0]['IpRanges'][0]['CidrIp'] == ip:
             # Existing security group matches, so use it
             sg = sg_check['SecurityGroups'][0]['GroupId']
+        else:
+            # Delete the non-matching security group so it can be re-created
+            ec2.delete_security_group(GroupId=sg_check['SecurityGroups'][0]['GroupId'])
+
+    if sg == '':
+        # Create the security group
+        sg_response = ec2.create_security_group(
+            Description='Bastion access for ' + user,
+            GroupName=bastion_name,
+            VpcId=vpc
+        )
+
+        sg = sg_response['GroupId']
+
+        # Add the ingress rule to it
+        ec2.authorize_security_group_ingress(
+            CidrIp=ip,
+            FromPort=22,
+            GroupId=sg,
+            IpProtocol='tcp',
+            ToPort=22
+        )
 
     # Start the bastion container
     response = ecs.run_task(
