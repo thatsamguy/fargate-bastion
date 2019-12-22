@@ -19,6 +19,7 @@ def ipResponse(ip):
     response = {}
     response['statusCode'] = 200
     response['body'] = ip
+    print(ip)
     return response
 
 def failResponse(error):
@@ -49,22 +50,28 @@ def lambda_handler(event, context):
             desiredStatus='RUNNING'
         )
         if len(running_tasks['taskArns']) > 0:
-            tasklist = ecs.describe_tasks(cluster=bastion_cluster, tasks=running_tasks['taskArns'])
-            task_arn = tasklist['tasks'][0]['taskArn']
-            attachment_id = tasklist['tasks'][0]['attachments'][0]['id']
-            attachment_identifier = "attachment/" + attachment_id
-            attachment_description = re.sub(r'task/.*', attachment_identifier, task_arn)
-            eni_description = ec2.describe_network_interfaces(
-                Filters=[
-                    {
-                        'Name': 'description',
-                        'Values': [attachment_description]
-                    }
-                ]
-            )
-            ip = eni_description['NetworkInterfaces'][0]['Association']['PublicIp']
+            tasklist = ecs.describe_tasks(cluster=bastion_cluster, tasks=running_tasks['taskArns'], include=['TAGS'])
+            for task in tasklist['tasks']:
+                if task['startedBy'] == 'bastion-builder':
+                    for tag in task['tags']:
+                        if tag['key'] == 'name' and tag['value'] == bastion_name:
+                            print('Found an existing task')
+                            task_arn = task['taskArn']
+                            print(task_arn)
+                            attachment_id = task['attachments'][0]['id']
+                            attachment_identifier = "attachment/" + attachment_id
+                            attachment_description = re.sub(r'task/.*', attachment_identifier, task_arn)
+                            eni_description = ec2.describe_network_interfaces(
+                                Filters=[
+                                    {
+                                        'Name': 'description',
+                                        'Values': [attachment_description]
+                                    }
+                                ]
+                            )
+                            ip = eni_description['NetworkInterfaces'][0]['Association']['PublicIp']
 
-            return ipResponse(ip)
+                            return ipResponse(ip)
     except ClientError as e:
         if e.response['Error']['Code'] == 'InvalidGroup.NotFound':
             print("SecurityGroup doesn't exist yet")
@@ -100,6 +107,8 @@ def lambda_handler(event, context):
         )
 
     # Start the bastion container
+    print('Starting a new task')
+
     response = ecs.run_task(
         cluster=bastion_cluster,
         taskDefinition=task_definition_name,
@@ -112,9 +121,17 @@ def lambda_handler(event, context):
                 'securityGroups': [sg],
                 'assignPublicIp': 'ENABLED'
             }
-        }
+        },
+        enableECSManagedTags=True,
+        tags=[
+            {
+                'key': 'name',
+                'value': bastion_name
+            },
+        ]
     )
     task_arn = response['tasks'][0]['taskArn']
+    print(task_arn)
     attachment_id = response['tasks'][0]['attachments'][0]['id']
     attachment_identifier = "attachment/" + attachment_id
     attachment_description = re.sub(
