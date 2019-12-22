@@ -42,7 +42,10 @@ def lambda_handler(event, context):
             print(task_arn)
             # Retrieve the ENI information
             tasklist = ecs.describe_tasks(
-                cluster=bastion_cluster, tasks=[task_arn])
+                cluster=bastion_cluster, tasks=[task_arn], include=['TAGS'])
+            for tag in tasklist['tasks'][0]['tags']:
+                if tag['key'] == 'name':
+                    print(tag['value'])
             attachment_id = tasklist['tasks'][0]['attachments'][0]['id']
             attachment_identifier = "attachment/" + attachment_id
             attachment_description = re.sub(
